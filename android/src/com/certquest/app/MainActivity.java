@@ -39,9 +39,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#0B1020"));
-        web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#0B1020"));
-        root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        this.root = root;
         setContentView(root);
 
         // Keep content clear of status/navigation bars (edge-to-edge is enforced on targetSdk 35+).
@@ -58,6 +56,24 @@ public class MainActivity extends Activity {
             return insets;
         });
 
+        setupWebView();
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            android.window.OnBackInvokedCallback cb = this::handleBack;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
+            backCallback = cb;
+        }
+
+        if (state != null) web.restoreState(state);
+        if (state == null || web.getUrl() == null) web.loadUrl(START);
+    }
+
+    FrameLayout root;
+
+    void setupWebView() {
+        web = new WebView(this);
+        web.setBackgroundColor(Color.parseColor("#0B1020"));
+        root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);          // localStorage persistence
@@ -90,6 +106,15 @@ public class MainActivity extends Activity {
                 }
             }
             @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                // Renderer crashed or was killed for memory: rebuild the WebView instead of crashing the app.
+                root.removeView(view);
+                view.destroy();
+                setupWebView();
+                web.loadUrl(START);
+                return true;
+            }
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
                 if (HOST.equals(u.getHost())) return false;
@@ -111,14 +136,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        if (Build.VERSION.SDK_INT >= 33) {
-            android.window.OnBackInvokedCallback cb = this::handleBack;
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb);
-            backCallback = cb;
-        }
-
-        if (state != null) web.restoreState(state);
-        if (state == null || web.getUrl() == null) web.loadUrl(START);
     }
 
     void handleBack() {
