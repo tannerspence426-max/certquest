@@ -491,6 +491,7 @@ function vGames(){
   app.innerHTML = GAMES.map(g=>`<a class="card row" href="#/game/${g.id}" style="text-decoration:none;color:inherit"><span style="font-size:38px">${g.i}</span><span class="grow"><b>${g.n}</b><div class="mut sm">${g.d}</div></span><span class="pill">Best ${S.games[g.id]||0}</span></a>`).join('');
 }
 function endGame(id, score, extra=''){
+  if (!location.hash.startsWith('#/game/'+id)) return;
   const best = S.games[id]||0; if (score>best) S.games[id]=score; bump(); save();
   app.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:56px">${score>best?'🏆':'🎮'}</div><h2>Score: ${score}</h2><p class="mut">${score>best?'New personal best!':'Best: '+best}</p>${extra}<button class="btn pri block" id="again">Play again</button><a class="btn block" href="#/games">All games</a></div>`;
   $('#again').onclick = () => vGame(id);
@@ -500,7 +501,9 @@ function timedMC(id, title, gen, secs=60){
   let score=0, streakN=0, end=Date.now()+secs*1000, cur, missed=[];
   const tick = setInterval(()=>{ const left=Math.max(0,Math.ceil((end-Date.now())/1000)); const el=$('#gt'); if(el) el.textContent=left+'s'; if(left<=0){ clearInterval(tick); endGame(id, score, missed.length?`<div class="card" style="text-align:left"><b>Review</b>${missed.slice(-8).map(m=>`<div class="sm" style="padding:4px 0">${m}</div>`).join('')}</div>`:''); } },250);
   cleanup = () => clearInterval(tick);
+  const myHash = location.hash;
   const next = () => {
+    if (location.hash !== myHash) return;
     cur = gen();
     app.innerHTML = `<div class="card" id="gcard"><div class="game-hud"><span>⏱ <span id="gt">${secs}s</span></span><span>🔥 ${streakN}</span><span>⭐ ${score}</span></div><div class="mut sm" style="text-align:center">${cur.hint||''}</div><div class="big-prompt">${cur.p}</div>${cur.opts.map((o,i)=>`<button class="opt" data-o="${i}"><span class="ltr">${'ABCD'[i]}</span><span>${esc(o)}</span></button>`).join('')}</div>`;
     app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{ const ok = cur.opts[+b.dataset.o]===cur.a; if(ok){ streakN++; score += 1 + Math.floor(streakN/5); } else { streakN=0; missed.push(`${cur.p.replace(/<[^>]+>/g,'')} → <b>${esc(cur.a)}</b>`); end -= 2000; } $('#gcard').classList.add(ok?'flash-ok':'flash-bad'); setTimeout(next, ok?150:450); });
@@ -520,8 +523,8 @@ function vGame(id){
   }
   if (id==='subnet') return timedMC('subnet','Subnet Sprint', subnetQ, 90);
   if (id==='attack') {
-    setTitle('Attack Sorter'); const rounds = pick(CONTENT.attacks, 12); let k=0, score=0; const log=[];
-    const show = () => { if (k>=rounds.length) return endGame('attack', score, `<div class="card" style="text-align:left">${log.join('')}</div>`); const [s,cat,why]=rounds[k];
+    setTitle('Attack Sorter'); const rounds = pick(CONTENT.attacks, 12); let k=0, score=0; const log=[]; const myHash = location.hash;
+    const show = () => { if (location.hash !== myHash) return; if (k>=rounds.length) return endGame('attack', score, `<div class="card" style="text-align:left">${log.join('')}</div>`); const [s,cat,why]=rounds[k];
       app.innerHTML = `<div class="card" id="gcard"><div class="game-hud"><span>${k+1}/${rounds.length}</span><span>⭐ ${score}</span></div><div class="q-text" style="min-height:90px">${esc(s)}</div><div class="cats">${CONTENT.attackCats.map(c=>`<button class="btn" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div><div id="why"></div></div>`;
       app.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{ const ok=b.dataset.c===cat; if(ok) score++; log.push(`<div class="sm" style="padding:4px 0">${ok?'✅':'❌'} ${esc(s)} → <b>${esc(cat)}</b>: ${esc(why)}</div>`); app.querySelectorAll('[data-c]').forEach(x=>{x.disabled=true; if(x.dataset.c===cat) x.classList.add('ok');}); $('#why').innerHTML=`<div class="expl ${ok?'ok':'bad'}"><b>${ok?'Correct!':'It\'s '+esc(cat)}</b> — ${esc(why)}</div><button class="btn pri block" id="nx">Next ›</button>`; $('#nx').onclick=()=>{k++;show();}; }); };
     return show();
@@ -530,8 +533,8 @@ function vGame(id){
     setTitle('OSI Stack');
     const items = []; CONTENT.osi.forEach(l => { l.ex.split(',').forEach(x=>items.push([x.trim(),l.n])); l.dev.split(',').forEach(x=>{ if(x.trim()!=='—') items.push([x.trim(),l.n]); }); items.push([l.pdu.split(' (')[0]+' (PDU)', l.n]); });
     const uniq = items.filter((x,i)=>items.findIndex(y=>y[0]===x[0])===i && !(x[0]==='Data (PDU)'));
-    const rounds = pick(uniq, 15); let k=0, score=0, t0=Date.now(); const log=[];
-    const show = () => { if (k>=rounds.length) { const secs=Math.round((Date.now()-t0)/1000); return endGame('osi', Math.max(0, score*10 - Math.floor(secs/3)), `<p class="mut">${score}/15 correct in ${secs}s</p><div class="card" style="text-align:left">${log.join('')}</div>`); }
+    const rounds = pick(uniq, 15); let k=0, score=0, t0=Date.now(); const log=[]; const myHash = location.hash;
+    const show = () => { if (location.hash !== myHash) return; if (k>=rounds.length) { const secs=Math.round((Date.now()-t0)/1000); return endGame('osi', Math.max(0, score*10 - Math.floor(secs/3)), `<p class="mut">${score}/15 correct in ${secs}s</p><div class="card" style="text-align:left">${log.join('')}</div>`); }
       const [it, n] = rounds[k];
       app.innerHTML = `<div class="card" id="gcard"><div class="game-hud"><span>${k+1}/15</span><span>⭐ ${score}</span></div><div class="mut sm" style="text-align:center">Which OSI layer?</div><div class="big-prompt" style="font-size:24px">${esc(it)}</div><div class="layers">${[1,2,3,4,5,6,7].map(L=>`<button class="btn l${L}" style="color:#111" data-l="${L}"><b>${L}</b><small>${CONTENT.osi.find(o=>o.n===L).name.slice(0,5)}</small></button>`).join('')}</div><div class="mut sm" style="margin-top:10px;text-align:center">Please Do Not Throw Sausage Pizza Away</div></div>`;
       app.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{ const ok=+b.dataset.l===n; if(ok) score++; log.push(`<div class="sm">${ok?'✅':'❌'} ${esc(it)} → Layer ${n} ${CONTENT.osi.find(o=>o.n===n).name}</div>`); $('#gcard').classList.add(ok?'flash-ok':'flash-bad'); if(!ok) toast(`${esc(it)} = Layer ${n} (${CONTENT.osi.find(o=>o.n===n).name})`); setTimeout(()=>{k++;show();}, ok?200:900); }); };
