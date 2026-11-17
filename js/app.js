@@ -592,7 +592,7 @@ function vProgress(){
   <a class="btn block" href="#/about">ℹ About, exam versions & credits</a>`;
   $('#th').onclick=()=>{ S.theme=S.theme==='dark'?'light':'dark'; document.documentElement.dataset.theme=S.theme; save(); vProgress(); };
   $('#npd').onchange=e=>{ S.newPerDay=+e.target.value; save(); };
-  $('#exp').onclick=()=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'})); a.download='certquest-progress-'+today()+'.json'; a.click(); };
+  $('#exp').onclick=()=>{ if (window.CQAndroid) { CQAndroid.saveFile('certquest-progress-'+today()+'.json', JSON.stringify(S)); return; } const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'})); a.download='certquest-progress-'+today()+'.json'; a.click(); };
   $('#imp').onchange=e=>{ const f=e.target.files[0]; if(!f) return; f.text().then(t=>{ try{ S=Object.assign(defState(),JSON.parse(t)); save(); toast('Progress imported'); vProgress(); }catch(err){ toast('Invalid file'); } }); };
   $('#rst').onclick=()=>{ if(confirm('Erase ALL progress, streaks and flashcard history?')){ S=defState(); save(); toast('Reset'); vProgress(); } };
 }
@@ -618,6 +618,6 @@ function vAbout(){
 $('#back').onclick = () => history.length>1 ? history.back() : (location.hash='#/today');
 $('#prog').onclick = () => location.hash = '#/progress';
 route();
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !window.CQAndroid && location.hostname !== 'appassets.androidplatform.net') navigator.serviceWorker.register('sw.js').catch(()=>{});
 window.__CQ = { QLIST, CARDS, LESSONS, VIS: window.VIS, GAMES, buildPlan, S: ()=>S };
 })();
